@@ -54,7 +54,24 @@ const upload = multer({ storage });
 // @route GET /
 // @desc Loads form
 app.get('/', (req, res) => {
-  res.render('index');
+  gfs.files.find().toArray((err, files) => {
+    // Check if files
+    if (!files || files.length === 0) {
+      res.render('index', { files: false });
+    } else {
+      files.map((file) => {
+        if (
+          file.contentType === 'image/jpeg' ||
+          file.contentType === 'image/png'
+        ) {
+          file.isImage = true;
+        } else {
+          file.isImage = false;
+        }
+      });
+      res.render('index', { files: files });
+    }
+  });
 });
 
 // @route POST /
@@ -81,7 +98,7 @@ app.get('/files', (req, res) => {
 });
 
 // @route GET /files/:filename
-// @desc Display all files in JSON
+// @desc Display single file object
 app.get('/files/:filename', (req, res) => {
   gfs.files.findOne({ filename: req.params.filename }, (err, file) => {
     // Check if file
@@ -92,6 +109,29 @@ app.get('/files/:filename', (req, res) => {
     }
     // File exists
     return res.json(file);
+  });
+});
+
+// @route GET /image/:filename
+// @desc Display image
+app.get('/image/:filename', (req, res) => {
+  gfs.files.findOne({ filename: req.params.filename }, (err, file) => {
+    // Check if file
+    if (!file || file.length === 0) {
+      return res.status(404).json({
+        err: 'No files exists',
+      });
+    }
+    // Check if image
+    if (file.contentType === 'image/jpeg' || file.contentType === 'img/png') {
+      // Read output to browser
+      const readstream = gfs.createReadStream(file.filename);
+      readstream.pipe(res);
+    } else {
+      res.status(404).json({
+        err: 'No image exists',
+      });
+    }
   });
 });
 
